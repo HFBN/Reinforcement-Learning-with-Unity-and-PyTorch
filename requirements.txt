@@ -1,0 +1,14 @@
+Pillow==7.0.0
+matplotlib==3.2.1
+numpy==1.18.2
+torch
+jupyter==1.0.0
+pytest==5.4.1
+docopt
+pyyaml==5.3.1
+protobuf==3.11.3
+grpcio==1.27.2
+pandas==1.0.3
+scipy==1.4.1
+ipykernel==5.2.0
+tqdm==4.43.0
