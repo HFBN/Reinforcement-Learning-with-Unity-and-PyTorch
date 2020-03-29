@@ -1,0 +1,5 @@
+# Ignore environments:
+**\banana_windows
+
+# Ignore checkpoitns:
+.ipynb_checkpoints
