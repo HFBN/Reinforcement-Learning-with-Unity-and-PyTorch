@@ -8,3 +8,6 @@ banana_windows/
 
 # Ignore weight folders:
 **/weights/**
+
+# Ignore logs
+.log
