@@ -1,8 +1,9 @@
 # Ignore environments:
-**\banana_windows\**
+banana_windows/
 
-# Ignore checkpoitns:
+# Ignore checkpoints and chache:
 .ipynb_checkpoints
+**\__pycache__
 
 # Ignore weight folders:
 **/weights/**
