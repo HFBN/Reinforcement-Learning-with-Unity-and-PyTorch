@@ -4,6 +4,7 @@ banana_windows/
 # Ignore checkpoints and chache:
 .ipynb_checkpoints
 **\__pycache__
+.pytest_cache
 
 # Ignore weight folders:
 **/weights/**
