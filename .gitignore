@@ -1,5 +1,8 @@
 # Ignore environments:
-**\banana_windows
+**\banana_windows\**
 
 # Ignore checkpoitns:
 .ipynb_checkpoints
+
+# Ignore weight folders:
+**/weights/**
