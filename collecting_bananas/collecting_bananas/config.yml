@@ -1,0 +1,22 @@
+# Shared values
+observation_dim: 37
+action_dim: 4
+seed: 42
+
+# Buffer Config
+buffer_size: 500000
+min_buffer_size: 50000
+
+# Network Config
+layers:
+  fc1: 128
+  fc2: 64
+
+# Agent Config
+batch_size: 32
+epsilon: 1.0
+min_epsilon: 0.1
+epsilon_decay_period: 50000
+gamma: 0.75
+learning_rate: 10e-4
+update_period: 10000
