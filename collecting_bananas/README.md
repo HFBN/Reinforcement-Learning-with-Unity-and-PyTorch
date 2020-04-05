@@ -1,6 +1,6 @@
 # Collecting Bananas
 
-Inside this directory, an agent is trained to navigate (and collect bananas!) in a large, square world by using 
+In this subproject, an agent is trained collect bananas in a large, square world by using 
 __Deep-Q-Learning__.  
 <br>
 ![Trained Agent](https://video.udacity-data.com/topher/2018/June/5b1ab4b0_banana/banana.gif)
@@ -20,11 +20,11 @@ the agent's forward direction. Given this information, the agent has to learn ho
 - **`2`** - turn left.  
 - **`3`** - turn right.  
 
-The task is episodic, and in order to consider the environment solved, we want the agent to get an average score of 
+The task is episodic, and in order to consider the environment solved, we want the agent to achieve an average score of 
 +13 or higher over 100 consecutive episodes.
 
 ## Setup: Download the Unity Environment
-For this project, you will not need to install Unity - the environment is pre-built and can be downloaded from one of 
+For this subproject, you will not need to install Unity - the environment is pre-built and can be downloaded from one of 
 the links below. You also need to perform the steps described in section "Getting Started" of the main README.md.
 
 - Linux: [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P1/Banana/Banana_Linux.zip)
@@ -32,5 +32,6 @@ the links below. You also need to perform the steps described in section "Gettin
 - Windows (32-bit): [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P1/Banana/Banana_Windows_x86.zip)
 - Windows (64-bit): [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P1/Banana/Banana_Windows_x86_64.zip)
 
-Then, place the unzipped content in collecting_bananas/environment/banana_windows. Create the directory /environment and
-set the variable BANANA_PATH (defined in training and testing) as path to the Banana.exe inside this folder.
+Create the directory ./collecting_bananas/environment, place the unzipped content inside this folder and set the 
+variable BANANA_PATH (defined in training.ipynb and evaluation.ipynb) as path to Banana.exe inside the environment 
+folder.

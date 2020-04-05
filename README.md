@@ -28,13 +28,13 @@ You also might want to use Jupyter Notebooks for a more visual experience during
    cd deep-reinforcement-learning/python
    pip install .
    ```
-3. There have been some issues with Windows and pytorch as well as TensorFlow. Therefore, we install them 
+3. There have been some issues with Windows and pytorch as well as TensorFlow. Therefore, I recommend to install them
 manually.
    ```
    conda install -c conda-forge tensorflow==1.14.0
    conda install -c pytorch pytorch==1.4.0
    ```
-4. Create an IPython kernel for the drlnd environment.
+4. Create an IPython kernel for the rlup environment.
    ```
    python -m ipykernel install --user --name rlup --display-name "rlup"
    ```
