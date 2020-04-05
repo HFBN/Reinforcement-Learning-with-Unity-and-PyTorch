@@ -1,6 +1,6 @@
 # Design Choices
 The following provides a quick explanation of the project stucture and implementation choices.
-We will use Q-Learning. For more information on DQN, please refer to this [link.](https://towardsdatascience.com/self-learning-ai-agents-part-ii-deep-q-learning-b5ac60c3f47).
+We will use Deep-Q-Learning. For more information on DQN, please refer to this [link.](https://towardsdatascience.com/self-learning-ai-agents-part-ii-deep-q-learning-b5ac60c3f47).
 
 ## High Level Structure
 ![High Level Stucture](images/structure.png)
@@ -23,7 +23,7 @@ The agent decides on which action to choose by using a Neural Network (Main Netw
 action given the current observation and picking the action with the highest expected value.
 The Main Network is trained at each timestep with regard to the loss function  
 <br>
-![loss](images/loss.png)  
+![loss](images/loss.PNG)  
 <br>
 where Q<sub>main</sub> / Q<sub>target</sub> represent the Main Network / Target Network, respectively. The 
 (obs, action, rew, next_obs, done)-tuples are sampled from the Replay Buffer. The Main and Target Network are identical 
@@ -43,4 +43,5 @@ where tau is a tuneable hyperparameter.
 ## Ideas for Improvement
 - Increasing the number of training steps during each timestep might increase sample efficiency.
 - Implementing Double-Deep-Q-Learning or Dueling-Deep-Q-Networks might increase stability by providing a critic as 
-   baseline. For more information, follow this [link]().
+   baseline. For more information, follow [this](https://towardsdatascience.com/double-deep-q-networks-905dd8325412)
+   or this [link](https://towardsdatascience.com/dueling-deep-q-networks-81ffab672751).
