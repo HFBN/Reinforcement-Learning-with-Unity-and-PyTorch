@@ -18,6 +18,6 @@ epsilon: 1
 min_epsilon: 0.1
 epsilon_decay_period: 50000
 gamma: 0.99
-learning_rate: 10e-4
+learning_rate: 10e-5
 update_period: 30000
 tau: 2e-3
