@@ -6,8 +6,6 @@ banana_windows/
 **\__pycache__
 .pytest_cache
 
-# Ignore weight folders:
-**/weights/**
-
-# Ignore logs
-.log
+# Ignore certain files
+*.log
+*.idea
