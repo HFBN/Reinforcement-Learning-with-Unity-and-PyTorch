@@ -2,7 +2,7 @@
 
 Inside this directory, an agent is trained to navigate (and collect bananas!) in a large, square world.  
 <br>
-![Trained Agent](https://video.udacity-data.com/topher/2018/June/5b1ab4b0_banana/banana.gif)
+![Trained Agent](https://video.udacity-data.com/topher/2018/June/5b1ab4b0_banana/banana.gif) ![Banana](https://i.pinimg.com/originals/45/ce/2a/45ce2ae11509510b0ed6e6e89a02abe6.gif)
 <br>
 
 ## The Environment
