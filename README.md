@@ -33,7 +33,6 @@ manually.
    ```
    conda install -c conda-forge tensorflow==1.14.0
    conda install -c pytorch pytorch==1.4.0
-   conda install -c anaconda protobuf==3.5.2
    ```
 4. Create an IPython kernel for the drlnd environment.
    ```

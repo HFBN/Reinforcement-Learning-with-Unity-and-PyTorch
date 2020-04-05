@@ -70,8 +70,8 @@ class BaseAgent:
         self.main_network = torch.load(path)
 
 
-class DoubleQAgent(BaseAgent):
-    """A class representing an agent using Double-Deep-Q-Learning"""
+class DeepQAgent(BaseAgent):
+    """A class representing an agent using Deep-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
         """ Initialize the components Estimator and Target Network as well as some further attributes"""

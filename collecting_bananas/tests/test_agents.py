@@ -1,5 +1,5 @@
 import numpy as np
-from collecting_bananas.agents.agents import DoubleQAgent
+from collecting_bananas.agents.agents import DeepQAgent
 from collecting_bananas.agents.utils import get_config
 
 
@@ -7,7 +7,7 @@ config = get_config()
 
 
 def test_act(observation):
-    agent = DoubleQAgent(config)
+    agent = DeepQAgent(config)
 
     # Exploration
     agent.epsilon = 1
