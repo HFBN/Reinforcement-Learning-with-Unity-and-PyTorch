@@ -32,6 +32,7 @@ is applied to the Target Network. Using this target network as a decoupled, more
 further stability.
 
 ## Soft Update
+
 During experimentation it became obvious that hard, periodical updates of the target network leads to training 
 instability. As a consequence, soft updates were implemented. At each timestep, the Target Network weights
 are update towards the Main Network weights like this:
@@ -41,9 +42,36 @@ are update towards the Main Network weights like this:
 
 where tau is a tuneable hyperparameter.
 
+## Exploration
+
+At each timestep, the agent randomly picks an action with a probability epsilon. This encourages going new ways from
+time to time. The agent starts with a high epsilon (i.e. probability of acting randomly) and linearly decreases
+epsilon (i.e. exploration) at each timestep.
+
+## Hyperparameters
+
+For the achieved results described below, the following hyperparameters have been used in config.yml.
+
+- observation_dim: 37
+- action_dim: 4
+- seed: 42
+- buffer_size: 500000
+- min_buffer_size: 50000
+- layers:
+    - fc1: 32
+    - fc2: 32
+- batch_size: 64
+- epsilon: 1
+- min_epsilon: 0.1
+- epsilon_decay_period: 50000
+- gamma: 0.99
+- learning_rate: 10e-5
+- update_period: 30000
+- tau: 2e-3
+
 ## Results
 
-For the given configuration (see collecting_bananas/config.yml), the following training results have been achieved over
+For the given configuration, the following training results have been achieved over
 3000 episodes.  
 <br>
 ![results](images/results.PNG)
