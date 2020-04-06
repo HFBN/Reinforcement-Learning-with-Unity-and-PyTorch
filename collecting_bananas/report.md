@@ -3,7 +3,7 @@ The following provides a quick explanation of the project stucture and implement
 We used Deep-Q-Learning. For more information on DQN, please refer to this [link.](https://towardsdatascience.com/self-learning-ai-agents-part-ii-deep-q-learning-b5ac60c3f47).
 
 ## High Level Structure
-![High Level Stucture](images/structure.PNG)
+![High Level Stucture](images/structure.png)
 
 Basically, the whole project consists of two interacting objects: an agent and an environment.  
 The agent decides how to act based on the current situation (observation) it finds itself in.  
