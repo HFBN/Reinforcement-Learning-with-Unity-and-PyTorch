@@ -1,4 +1,3 @@
-import os
 import numpy as np
 from strictyaml import load, YAML
 from .buffer import BufferConfig

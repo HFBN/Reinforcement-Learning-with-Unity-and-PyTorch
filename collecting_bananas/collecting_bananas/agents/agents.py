@@ -18,7 +18,6 @@ class AgentConfig(BaseModel):
     min_epsilon: float
     gamma: float
     learning_rate: float
-    update_period: int
     tau: float
     buffer_config: BufferConfig
     network_config: NetworkConfig
@@ -90,7 +89,7 @@ class DeepQAgent(BaseAgent):
     def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
         """ Predict the state-action-values using the target network given one or several observation(s) """
         observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
-        return self.target_network(observations).detach().numpy()
+        return self.target_network.forward(observations).detach().numpy()
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
@@ -111,18 +110,14 @@ class DeepQAgent(BaseAgent):
         observations = torch.from_numpy(observations).float()
         actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
         targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
-        predictions = self.main_network(observations).gather(dim=1, index=actions)
+        predictions = self.main_network.forward(observations).gather(dim=1, index=actions)
         loss = F.mse_loss(predictions, targets)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
         # Increment number of updates done so far and update target network if necessary
-        self.num_updates += 1
         self._soft_update(self.main_network, self.target_network, self.config.tau)
-        if self.num_updates % self.config.update_period == 0:
-            pass
-            # self.target_network = copy.copy(self.main_network)
 
     def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
         """Soft update model parameters"""

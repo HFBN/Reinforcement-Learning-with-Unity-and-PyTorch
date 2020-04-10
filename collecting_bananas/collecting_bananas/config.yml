@@ -1,7 +1,7 @@
 # Shared values
 observation_dim: 37
 action_dim: 4
-seed: 42
+seed: 1
 
 # Buffer Config
 buffer_size: 500000
@@ -19,5 +19,4 @@ min_epsilon: 0.1
 epsilon_decay_period: 50000
 gamma: 0.99
 learning_rate: 10e-5
-update_period: 30000
 tau: 2e-3
