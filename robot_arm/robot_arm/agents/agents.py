@@ -2,8 +2,8 @@ import numpy as np
 import copy
 from pydantic import BaseModel
 from .buffer import BufferConfig, ReplayBuffer
-from .networks import NetworkConfig, Actor, Critic
-from .utils import OUConfig, OUNoise
+from .networks import NetworkConfig, Actor, Critic, TwinCritic
+from .noise import OUConfig, OUNoise
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -13,13 +13,14 @@ class AgentConfig(BaseModel):
     """A class used to configure an Agent"""
     observation_dim: int
     action_dim: int
-    action_high: np.float32
-    action_low: np.float32
+    action_high: float
+    action_low: float
     batch_size: int
-    gamma: np.float32
-    actor_learning_rate: np.float32
-    critic_learning_rate: np.float32
-    tau: np.float32
+    gamma: float
+    actor_learning_rate: float
+    critic_learning_rate: float
+    action_noise_std: float
+    tau: float
     buffer_config: BufferConfig
     actor_config: NetworkConfig
     critic_config: NetworkConfig
@@ -41,30 +42,33 @@ class BaseAgent:
         self.target_critic = copy.copy(self.main_critic)
         self.ou_noise = OUNoise(config.noise_config)
 
+        # Set train mode (enables exploration)
+        self.train_mode = False
+
     def memento(self, observation: np.ndarray, action: np.ndarray, reward: np.float,
                 next_observation: np.ndarray, done: bool):
         """Store a (observation, action, reward, next_observation, done) tuple"""
         self.memory.store(observation, action, reward, next_observation, done)
 
     def _predict_action(self, observations: np.ndarray) -> np.ndarray:
-        """ Predict the actions using the main actor given one or several observation(s) """
+        """Predict the actions using the main actor given one or several observation(s) """
         observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
         return self.main_actor.forward(observations).detach().numpy()
 
     def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
-        """ Predict the state-actions-values given one or several state-action-pairs"""
+        """Predict the state-actions-values given one or several state-action-pairs"""
         observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
         actions = self.target_actor.forward(observations)
         values = self.target_critic.forward(observations, actions).detach().numpy()
         return values
 
-    def act(self, observation: np.ndarray, t, reset_noise=False) -> np.int32:
-        """ Makes the Agent choose an action based on the observation and its current estimator"""
-        noise = self.ou_noise.noise(t)
-        if reset_noise:
-            self.ou_noise.reset()
+    def act(self, observation: np.ndarray, t=0) -> np.ndarray:
+        """Makes the Agent choose an action based on the observation and its current estimator"""
         action = self._predict_action(observation)
-        return np.clip(action + noise, self.config.action_low, self.config.action_high)
+        if self.train_mode:
+            noise = self.ou_noise.noise(t)
+            action = np.clip(action + noise, self.config.action_low, self.config.action_high)
+        return action
 
     def _soft_update(self, main_actor: Actor, target_actor: Actor,
                      main_critic: Critic, target_critic: Critic, tau: float):
@@ -86,12 +90,12 @@ class BaseAgent:
 
 
 class DDPGAgent(BaseAgent):
-    """A class representing an agent using Deep-Q-Learning"""
+    """A class representing an agent using Deep Deterministic Policy Gradient"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
 
         # Initialize optimizer:
-        self.actor_optimizer = optim.Adam(self.main_actor.parameters(), lr=config.action_learning_rate)
+        self.actor_optimizer = optim.Adam(self.main_actor.parameters(), lr=config.actor_learning_rate)
         self.critic_optimizer = optim.Adam(self.main_critic.parameters(), lr=config.critic_learning_rate)
 
     def learn(self):
@@ -110,7 +114,7 @@ class DDPGAgent(BaseAgent):
 
         # Update Critic
         observations = torch.from_numpy(observations).float()
-        actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
+        actions = torch.from_numpy(actions).float()
         targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
         predictions = self.main_critic.forward(observations, actions)
         critic_loss = F.mse_loss(predictions, targets)
@@ -126,3 +130,64 @@ class DDPGAgent(BaseAgent):
 
         self._soft_update(self.main_actor, self.target_actor,
                           self.main_critic, self.target_critic, self.config.tau)
+
+
+class TD3Agent(BaseAgent):
+    """A class representing an agent using Twin Delayed Deep Deterministic Policy Gradient"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        self.main_critic = TwinCritic(self.config.critic_config)
+        self.target_critic = copy.copy(self.main_critic)
+
+        # Initialize optimizer:
+        self.actor_optimizer = optim.Adam(self.main_actor.parameters(), lr=config.actor_learning_rate)
+        self.critic_optimizer = optim.Adam(self.main_critic.parameters(), lr=config.critic_learning_rate)
+
+        # We will need to count the update steps so far:
+        self.step_count = 0
+
+    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
+        """ Predict the state-actions-values given one or several state-action-pairs"""
+        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
+        actions = self.target_actor.forward(observations)
+        noise = torch.empty(actions.size()).normal_(mean=0, std=self.config.action_noise_std)
+        actions = torch.clamp(actions + noise, min=self.config.action_low, max=self.config.action_high)
+        values, alternative_values = self.target_critic.forward(observations, actions)
+        return np.minimum(values.detach().numpy(), alternative_values.detach().numpy())
+
+    def learn(self):
+        """Perform a one step gradient update with a batch samples from experience"""
+        experience = self.memory.sample_batch(self.config.batch_size)
+        observations = experience.observations
+        actions = experience.actions
+        rewards = experience.rewards
+        next_observations = experience.next_observations
+        # We are going to use the dones to adjust target values once a terminal observation is reached.
+        dones = experience.dones
+
+        # Calculate update targets
+        values = self._predict_targets(next_observations)
+        targets = rewards.reshape(-1) + self.config.gamma * (1-dones.reshape(-1)) * values.reshape(-1)
+
+        # Update Critic
+        observations = torch.from_numpy(observations).float()
+        actions = torch.from_numpy(actions).float()
+        targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
+        predictions, alternative_predictions = self.main_critic.forward(observations, actions)
+        critic_loss = F.mse_loss(predictions, targets) + F.mse_loss(alternative_predictions, targets)
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
+        # Update Actor (delayed)
+        if self.step_count % 2 == 0:
+            actor_loss, _ = self.main_critic.forward(observations, self.main_actor.forward(observations))
+            actor_loss = -1 * actor_loss.mean()
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
+
+            self._soft_update(self.main_actor, self.target_actor,
+                              self.main_critic, self.target_critic, self.config.tau)
+
+        self.step_count += 1

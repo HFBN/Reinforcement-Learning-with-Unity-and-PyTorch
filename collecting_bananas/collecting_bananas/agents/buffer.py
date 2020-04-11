@@ -19,7 +19,6 @@ class BufferConfig(BaseModel):
     observation_dim: int
     buffer_size: int
     min_buffer_size: int
-    layers: Dict[str, int]
 
 
 class ReplayBuffer:
@@ -33,7 +32,7 @@ class ReplayBuffer:
         self.dones = np.zeros(config.buffer_size, dtype=np.float32)
         self.pointer, self.size, self.buffer_size = 0, 0, config.buffer_size
 
-    def store(self, observation: np.ndarray, action: np.ndarray, reward: np.float,
+    def store(self, observation: np.ndarray, action: np.int32, reward: np.float,
               next_observation: np.ndarray, done: bool):
         self.observations[:, self.pointer] = observation
         self.next_observations[:, self.pointer] = next_observation
@@ -44,7 +43,7 @@ class ReplayBuffer:
         self.size = min(self.size + 1, self.buffer_size)
 
     def is_ready(self) -> bool:
-        """Returns whether more than (observation, action, reward, next_observation, done) tuples are stored"""
+        """Returns whether enough (observation, action, reward, next_observation, done) tuples have been stored"""
         return self.size > self.config.min_buffer_size
 
     def sample_batch(self, batch_size: int) -> Batch:

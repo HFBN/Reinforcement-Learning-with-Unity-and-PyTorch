@@ -38,7 +38,7 @@ class BaseAgent:
         self.epsilon = config.epsilon
         self.epsilon_decay_rate = self.epsilon / config.epsilon_decay_period
 
-    def memento(self, observation: np.ndarray, action: np.ndarray, reward: np.float,
+    def memento(self, observation: np.ndarray, action: np.int32, reward: np.float,
                 next_observation: np.ndarray, done: bool):
         """Store a (observation, action, reward, next_observation, done) tuple"""
         self.memory.store(observation, action, reward, next_observation, done)

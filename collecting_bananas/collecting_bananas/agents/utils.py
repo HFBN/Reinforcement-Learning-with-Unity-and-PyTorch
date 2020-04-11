@@ -15,10 +15,13 @@ def get_config() -> AgentConfig:
     """A helper that loads the config"""
     if CONFIG_PATH.is_file():
         with open(CONFIG_PATH, 'r') as conf_file:
-            parsed_config = load(conf_file.read())
-        buffer_config = BufferConfig(**parsed_config.data)
-        network_config = NetworkConfig(**parsed_config.data)
-        config = AgentConfig(**parsed_config.data,
+            parsed_config = load(conf_file.read()).data
+        buffer_config = BufferConfig(**parsed_config['shared_config'],
+                                     **parsed_config['buffer_config'])
+        network_config = NetworkConfig(**parsed_config['shared_config'],
+                                       **parsed_config['network_config'])
+        config = AgentConfig(**parsed_config['shared_config'],
+                             **parsed_config['agent_config'],
                              buffer_config=buffer_config,
                              network_config=network_config)
         return config
