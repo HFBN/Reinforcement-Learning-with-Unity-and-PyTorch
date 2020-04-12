@@ -57,6 +57,11 @@ During every second time step, the actor is also updated with respect to the los
 This is equivalent to updating the actor in such a way that it maximizes the state-action-value (with respect to the 
 current Main Critic's estimates).
 
+In the used configuration, the Actor is a three layer neural network with 128, 64, 32 hidden units respectively.
+Those hidden units are activated with ReLu. The output layer consists of 4 output units, activated with tanh.  
+Each head of the Critic consists of two hidden layers, one with 64 and one with 32 hidden units, activated with ReLu,
+followed by a linear output layer of size 1.
+
 
 ## Soft Update
 
