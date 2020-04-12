@@ -30,7 +30,7 @@ Four Neural Networks are put to work:
    A two-headed Neural Network - each head is used to predict the state-action value of a given state-action pair.
    The heads will be called Main Critic 1 and Main Critic 2.
 3. Target Actor  
-   The target actor is a delayed and trailing copy of the Main Actor. It is used to compute the target values during
+   The Target Actor is a delayed and trailing copy of the Main Actor. It is used to compute the target values during
    updates.
 4. Target Critic  
    Analogous to the Target Actor. The heads will be called Target Critic 1 and Target Critic 2.
@@ -46,10 +46,10 @@ where the targets are computed as
 ![targets](images/target.PNG)
 <br>
 
-where A represents the Actors, Q represents the Critics and done is a binary indicator whether the episode terminated
+A represents the Actors, Q represents the Critics and done is a binary indicator whether the episode terminated
 after the given sample observation.
 
-At every second time step, the actor is also updated with respect to the loss  
+During every second time step, the actor is also updated with respect to the loss  
 <br>
 ![actor loss](images/actor_loss.PNG)
 <br>
@@ -60,11 +60,11 @@ current Main Critic's estimates).
 
 ## Soft Update
 
-At each time step, the Target Critic's weights are updated towards those of the Main Critic using a soft update 
+During each time step, the Target Critic's weights are updated towards those of the Main Critic using a soft update 
 (see below). Every second time step, the Target Actor's weights are updated towards those of the Main Actor in the same 
-way (This is the "Delayed" in Twin Delayed Deep Deterministic Policy Gradient).  
+way.  
 
-Updates are performed using a soft update:
+These updates are performed using a soft update:
 <br>
 
 ![soft update](images/soft_update.PNG)
@@ -76,7 +76,8 @@ where each theta represents the weights of a Main / Target Network and tau is a 
 
 After predicting the action, some noise is added to the action to cause exploration.
 The noise is sampled from an Ornstein-Uhlenbeck-Process. In simple terms, this is just normal distributed noise, 
-but biased towards the mean over time.
+but biased towards the mean over time. More information on the Ornstein-Uhlenbeck-Process can be found 
+[here](https://en.wikipedia.org/wiki/Ornstein%E2%80%93Uhlenbeck_process).
 
 ## Hyperparameters
 
@@ -126,4 +127,7 @@ For the given configuration, the following training results have been achieved o
 <br>  
 
 ## Ideas for Improvement
-- For 
+- Going one step further and using distributed learning by implementing Distributed Distributional Deep Deterministic
+   Policy Gradient (D4PG). For more information on D4PG, follow [this.](https://arxiv.org/pdf/1804.08617.pdf)
+- Adding a tiny negative reward that is indirectly correlated to the magnitude of the summed up absolute values of the 
+   chosen actions at each time step. This could encourage more efficient and elegant movement.
