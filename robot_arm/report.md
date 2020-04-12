@@ -6,7 +6,7 @@ Gradient (DDPG) (its predecessor and also available in agents.py) and TD3, click
 or here [here (TD3)](https://towardsdatascience.com/td3-learning-to-run-with-ai-40dfc512f93).
 
 ## High Level Structure
-![High Level Stucture](images/structure.png)
+![High Level Structure](images/structure.PNG)
 
 Basically, the whole project consists of two interacting objects: an agent and an environment.  
 The agent decides how to act based on the current situation (observation) it finds itself in.  
