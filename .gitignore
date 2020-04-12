@@ -1,6 +1,7 @@
 # Ignore environments:
 banana_windows/
 reacher_windows/
+tennis_windows/
 
 # Ignore checkpoints and chache:
 .ipynb_checkpoints

@@ -1,0 +1,41 @@
+# Shared
+shared_config:
+  observation_dim: 24
+  action_dim: 2
+
+# Buffer Config
+buffer_config:
+  buffer_size: 500000
+  min_buffer_size: 100000
+
+# Actor Config
+actor_config:
+  layers:
+    fc1: 128
+    fc2: 64
+    fc3: 32
+
+# Critic Config
+critic_config:
+  layers:
+    fc1: 64
+    fc2: 32
+
+# Agent Config
+agent_config:
+  action_high: 1.0
+  action_low: -1.0
+  batch_size: 128
+  gamma: 0.99
+  actor_learning_rate: 5e-4
+  critic_learning_rate: 5e-5
+  action_noise_std: 0.1
+  tau: 1e-4
+
+# Ornstein-Uhlenbeck-Noise Config
+ou_config:
+  mu: 0.0
+  theta: 0.2
+  max_sigma: 0.2
+  min_sigma: 0.1
+  decay_period: 1000
