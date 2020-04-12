@@ -50,6 +50,10 @@ class BaseAgent:
         """Store a (observation, action, reward, next_observation, done) tuple"""
         self.memory.store(observation, action, reward, next_observation, done)
 
+    def set_buffer(self, buffer: ReplayBuffer):
+        """Replaces the internal buffer with a given external buffer as an easy way to incorporate shared buffer"""
+        self.memory = buffer
+
     def _predict_action(self, observations: np.ndarray) -> np.ndarray:
         """Predict the actions using the main actor given one or several observation(s) """
         observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
