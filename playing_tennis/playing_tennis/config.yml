@@ -11,8 +11,8 @@ buffer_config:
 # Actor Config
 actor_config:
   layers:
-    fc1: 64
-    fc2: 32
+    fc1: 32
+    fc2: 16
     fc3: 16
 
 # Critic Config

@@ -20,7 +20,7 @@ the agent's forward direction. Given this information, the agent has to learn ho
 - **`2`** - turn left.  
 - **`3`** - turn right.  
 
-The task is episodic, and in order to consider the environment solved, we want the agent to achieve an average score of 
+The task is episodic, and in order to consider the environment solved, the agent needs to achieve an average score of 
 +13 or higher over 100 consecutive episodes.
 
 ## Setup: Download the Unity Environment
