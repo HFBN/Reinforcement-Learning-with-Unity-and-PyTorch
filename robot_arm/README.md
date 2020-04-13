@@ -3,7 +3,7 @@
 In this subproject, an agent is trained to control a robot arm by using 
 __Twin Delayed Deep Deterministic Policy Gradient (TD3)__.  
 <br>
-![Trained Agent]()
+![Trained Agent](images/robot_arm.gif)
 <br>
 
 ## The Environment

@@ -3,7 +3,7 @@
 In this subproject, two agents are trained to play tennis by using __Multi Agent Learning__ and
 __Twin Delayed Deep Deterministic Policy Gradient (TD3)__.  
 <br>
-![Trained Agent]()
+![Trained Agent](images/tennis.gif)
 <br>
 
 ## The Environment

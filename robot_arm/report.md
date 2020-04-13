@@ -19,7 +19,7 @@ stored inside the Replay Buffer. Doing this, we are able to randomly sample such
 and use those tuples to train the estimators. We do this mainly for two reasons:
 1. Sampling from experience increases the sample efficiency.
 2. Randomly sampling experience breaks interdependency of (observation, action, reward, next_observation, done)-tuples
-   and therefore stabilizes training of the estimator.
+   and therefore stabilizes training of the estimators.
    
 ## Estimators
 
