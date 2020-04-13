@@ -12,6 +12,7 @@ of state-of-the-art reinforcement learning algorithms solving Unity-based enviro
   This directory contains everything you need to train and evaluate two Agents that learn to play tennis in a 
   Multi-Agent-Scenario.
   
+__Each subproject is designed as a stand-alone project and can be used without the others.__  
 All environments were built in Unity. For more information on any of the subproject, please refer to the README.md 
 inside the subproject's directory.
 
