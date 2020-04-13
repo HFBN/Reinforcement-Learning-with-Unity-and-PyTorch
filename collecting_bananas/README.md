@@ -3,7 +3,7 @@
 In this subproject, an agent is trained collect bananas in a large, square world by using 
 __Deep-Q-Learning__.  
 <br>
-![Trained Agent](https://video.udacity-data.com/topher/2018/June/5b1ab4b0_banana/banana.gif)
+![Trained Agent](images/collecting_bananas.gif)
 <br>
 
 ## The Environment
