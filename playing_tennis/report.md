@@ -1,7 +1,7 @@
 # Design Choices
 The following provides a quick explanation of the project structure and implementation choices.
-We used Multi Agent Learning combined withTwin Delayed Deep Deterministic Policy Gradient (TD3). For more information 
-on Deep Deterministic Policy Gradient (DDPG) (its predecessor and also available in agents.py) and TD3, click 
+We used Multi Agent Learning combined with Twin Delayed Deep Deterministic Policy Gradient (TD3). For more information 
+on Deep Deterministic Policy Gradient (DDPG) (the predecessor and also available in agents.py) and TD3, click 
 [here (DDPG)](https://towardsdatascience.com/deep-deterministic-policy-gradients-explained-2d94655a9b7b)
 or here [here (TD3)](https://towardsdatascience.com/td3-learning-to-run-with-ai-40dfc512f93).
 
@@ -57,7 +57,7 @@ During every second time step, each Agent's actor is also updated with respect t
 ![actor loss](images/actor_loss.PNG)
 <br>
 
-This is equivalent to updating an actor in such a way that it maximizes the state-action-value (with respect to the 
+This is equivalent to updating an Actor in such a way that it maximizes the state-action-value (with respect to the 
 current Main Critic's estimates).
 
 In the used configuration, each Actor is a three layer neural network with 32, 16, 16 hidden units, respectively.
@@ -92,7 +92,7 @@ but biased towards the mean over time. More information on the Ornstein-Uhlenbec
 For the achieved results described below, the following hyperparameters have been used (for each Agent):
 
 - shared_config:  
-   - observation_dim: 24
+   - observation_dim: 8
    - action_dim: 2  
  
 - buffer_config:  
@@ -141,6 +141,6 @@ We also ran the trained agents after deactivating exploration and achieved the f
 
 ## Ideas for Improvement
 - Because of the Multi-Agent-Structure, training was highly instable from time to time. As can be seen above, the 
-   trained agent is able to achieve an average return of > 2.4 over 100 episodes after deactivating exploration. This is 
-   despite the fact that during training this score hardly crossed 1.0. Therefore, we conclude that experimenting with 
+   trained agents were able to achieve an average return of > 2.4 over 100 episodes after deactivating exploration. This 
+   is despite the fact that during training this score hardly crossed 1.0. Therefore, we conclude that experimenting with 
    decreasing exploration over episodes might be worth a shot.

@@ -22,7 +22,7 @@ The task is episodic and in order to solve the environment, the agents must get 
 Specifically,
 
 - after each episode, the rewards that each agent received are added up (without discounting) to get a score for each 
-   agent. This yields 2 (potentially different) scores. Then, the maximum of those two scores is taken.
+   agent. This yields two (potentially different) scores. Then, the maximum of those two scores is taken.
    This yields a single score for each episode.
 - The environment is considered solved as soon as the average (over 100 episodes) of those scores is at least +0.5.
 

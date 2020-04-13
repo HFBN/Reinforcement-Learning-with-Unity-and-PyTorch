@@ -1,6 +1,6 @@
 # Shared
 shared_config:
-  observation_dim: 24
+  observation_dim: 8
   action_dim: 2
 
 # Buffer Config

@@ -5,7 +5,16 @@ of state-of-the-art reinforcement learning algorithms solving Unity-based enviro
 ## Table of Contents
 - __collecting_bananas__  
   This directory contains everything you need to train and evaluate an Agent that learns to collect 
-  bananas in a large environment built in Unity. For more information, refer to the README.md inside the directory.
+  bananas in a large environment.
+- __robot_arm__  
+  This directory contains everything you need to train and evaluate an Agent that learns to control a robotic arm.
+- __playing_tennis__  
+  This directory contains everything you need to train and evaluate two Agents that learn to play tennis in a 
+  Multi-Agent-Scenario.
+  
+All environments were built in Unity. For more information on any of the subproject, please refer to the README.md 
+inside the subproject's directory.
+
 ## Getting started
 To set up the necessary dependencies, follow the steps described here.  
 

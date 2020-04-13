@@ -54,7 +54,7 @@ During every second time step, the actor is also updated with respect to the los
 ![actor loss](images/actor_loss.PNG)
 <br>
 
-This is equivalent to updating the actor in such a way that it maximizes the state-action-value (with respect to the 
+This is equivalent to updating the Actor in such a way that it maximizes the state-action-value (with respect to the 
 current Main Critic's estimates).
 
 In the used configuration, the Actor is a three layer neural network with 128, 64, 32 hidden units respectively.
