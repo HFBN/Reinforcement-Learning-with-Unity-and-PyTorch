@@ -92,7 +92,7 @@ but biased towards the mean over time. More information on the Ornstein-Uhlenbec
 For the achieved results described below, the following hyperparameters have been used (for each Agent):
 
 - shared_config:  
-   - observation_dim: 8
+   - observation_dim: 24
    - action_dim: 2  
  
 - buffer_config:  
