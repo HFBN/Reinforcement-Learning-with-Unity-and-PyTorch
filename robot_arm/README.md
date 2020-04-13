@@ -14,7 +14,7 @@ the target location for as many time steps as possible.
 
 The observation space consists of 33 variables corresponding to position, rotation, velocity, and angular velocities 
 of the arm. Each action is a vector with four numbers, corresponding to torque applicable to two joints. Every entry 
-in the action vector need to be a number between -1 and 1.
+in the action vector needs to be a number between -1 and 1.
 
 The task is episodic and in order to consider the environment solved the agent must get an average score of +30 
 over 100 consecutive episodes.
