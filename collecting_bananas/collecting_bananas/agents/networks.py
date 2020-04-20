@@ -52,10 +52,9 @@ class DuelingQNetwork(nn.Module):
 
         # Compute Value
         value_cache_ = F.relu(self.fc2(feature_layer))
-        value = F.relu(self.fc3(value_cache_))
+        value = self.fc3(value_cache_)
 
         # Compute Advantages
         advantage_cache_ = F.relu(self.fc4(feature_layer))
-        advantages = F.relu(self.fc5(advantage_cache_))
-
-        return value + (advantages - advantages.mean())
+        advantages = self.fc5(advantage_cache_)
+        return value + (advantages - advantages.mean(dim=1, keepdim=True))
