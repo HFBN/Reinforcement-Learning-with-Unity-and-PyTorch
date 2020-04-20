@@ -2,7 +2,7 @@ import numpy as np
 import copy
 from pydantic import BaseModel
 from .buffer import BufferConfig, ReplayBuffer
-from .networks import NetworkConfig, DQN
+from .networks import NetworkConfig, DQN, DuelingQNetwork
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -70,6 +70,63 @@ class BaseAgent:
 
 
 class DeepQAgent(BaseAgent):
+    """A class representing an agent using Double-Q-Learning"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        """ Initialize the components Estimator and Target Network as well as some further attributes"""
+
+        # Initialize the additional parts:
+        self.main_network = DQN(config.network_config)
+        # Copy the main network as the target network:
+        self.target_network = copy.copy(self.main_network)
+
+        # Initialize optimizer:
+        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+
+    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
+        """ Predict the state-action-values using the target network given one or several observation(s) """
+        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
+        return self.target_network.forward(observations).detach().numpy()
+
+    def learn(self):
+        """Perform a one step gradient update with a batch samples from experience"""
+        experience = self.memory.sample_batch(self.config.batch_size)
+        observations = experience.observations
+        actions = experience.actions
+        rewards = experience.rewards
+        next_observations = experience.next_observations
+        # We are going to use the dones to adjust target values once a terminal observation is reached.
+        dones = experience.dones
+
+        # Calculate update targets:
+        next_Qs = self._predict_targets(next_observations)
+        targets = rewards.reshape(-1) + self.config.gamma * (1-dones.reshape(-1)) * \
+            np.amax(next_Qs, axis=1).reshape(-1)
+
+        # Calculate loss
+        observations = torch.from_numpy(observations).float()
+        actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
+        targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
+        predictions = self.main_network.forward(observations).gather(dim=1, index=actions)
+        loss = F.mse_loss(predictions, targets)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        # Increment number of updates done so far and update target network if necessary
+        self._soft_update(self.main_network, self.target_network, self.config.tau)
+
+    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
+        """Soft update model parameters"""
+        for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
+            target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
+
+    def load(self, path: str):
+        self.main_network = torch.load(path)
+        self.target_network = torch.load(path)
+
+
+class DoubleQAgent(BaseAgent):
     """A class representing an agent using Deep-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
@@ -77,6 +134,63 @@ class DeepQAgent(BaseAgent):
 
         # Initialize the additional parts:
         self.main_network = DQN(config.network_config)
+        # Copy the main network as the target network:
+        self.target_network = copy.copy(self.main_network)
+
+        # Initialize optimizer:
+        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+
+    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
+        """ Predict the state-action-values using the target network given one or several observation(s) """
+        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
+        return self.target_network.forward(observations).detach().numpy()
+
+    def learn(self):
+        """Perform a one step gradient update with a batch samples from experience"""
+        experience = self.memory.sample_batch(self.config.batch_size)
+        observations = experience.observations
+        actions = experience.actions
+        rewards = experience.rewards
+        next_observations = experience.next_observations
+        # We are going to use the dones to adjust target values once a terminal observation is reached.
+        dones = experience.dones
+
+        # Calculate update targets:
+        next_actions = np.argmax(self._predict(next_observations), axis=1).reshape(-1)
+        next_Qs = self._predict_targets(next_observations)[np.arange(len(next_actions)), next_actions].reshape(-1)
+        targets = rewards.reshape(-1) + self.config.gamma * (1-dones.reshape(-1)) * next_Qs
+
+        # Calculate loss
+        observations = torch.from_numpy(observations).float()
+        actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
+        targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
+        predictions = self.main_network.forward(observations).gather(dim=1, index=actions)
+        loss = F.mse_loss(predictions, targets)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        # Increment number of updates done so far and update target network if necessary
+        self._soft_update(self.main_network, self.target_network, self.config.tau)
+
+    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
+        """Soft update model parameters"""
+        for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
+            target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
+
+    def load(self, path: str):
+        self.main_network = torch.load(path)
+        self.target_network = torch.load(path)
+
+
+class DuelingQAgent(BaseAgent):
+    """A class representing an agent using Deep-Q-Learning"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        """ Initialize the components Estimator and Target Network as well as some further attributes"""
+
+        # Initialize the additional parts:
+        self.main_network = DuelingQNetwork(config.network_config)
         # Copy the main network as the target network:
         self.target_network = copy.copy(self.main_network)
 
@@ -105,6 +219,66 @@ class DeepQAgent(BaseAgent):
         next_Qs = self._predict_targets(next_observations)
         targets = rewards.reshape(-1) + self.config.gamma * (1-dones.reshape(-1)) * \
             np.amax(next_Qs, axis=1).reshape(-1)
+
+        # Calculate loss
+        observations = torch.from_numpy(observations).float()
+        actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
+        targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
+        predictions = self.main_network.forward(observations).gather(dim=1, index=actions)
+        loss = F.mse_loss(predictions, targets)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        # Increment number of updates done so far and update target network if necessary
+        self._soft_update(self.main_network, self.target_network, self.config.tau)
+
+    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
+        """Soft update model parameters"""
+        for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
+            target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
+
+    def load(self, path: str):
+        self.main_network = torch.load(path)
+        self.target_network = torch.load(path)
+
+
+class DDQAgent(BaseAgent):
+    """A class representing an agent using Deep-Q-Learning"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        """ Initialize the components Estimator and Target Network as well as some further attributes"""
+
+        # Initialize the additional parts:
+        self.main_network = DuelingQNetwork(config.network_config)
+        # Copy the main network as the target network:
+        self.target_network = copy.copy(self.main_network)
+
+        # Initialize optimizer:
+        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+
+        # Initialize Update Counter:
+        self.num_updates = 0
+
+    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
+        """ Predict the state-action-values using the target network given one or several observation(s) """
+        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
+        return self.target_network.forward(observations).detach().numpy()
+
+    def learn(self):
+        """Perform a one step gradient update with a batch samples from experience"""
+        experience = self.memory.sample_batch(self.config.batch_size)
+        observations = experience.observations
+        actions = experience.actions
+        rewards = experience.rewards
+        next_observations = experience.next_observations
+        # We are going to use the dones to adjust target values once a terminal observation is reached.
+        dones = experience.dones
+
+        # Calculate update targets:
+        next_actions = np.argmax(self._predict(next_observations), axis=1).reshape(-1)
+        next_Qs = self._predict_targets(next_observations)[np.arange(len(next_actions)), next_actions].reshape(-1)
+        targets = rewards.reshape(-1) + self.config.gamma * (1-dones.reshape(-1)) * next_Qs
 
         # Calculate loss
         observations = torch.from_numpy(observations).float()
