@@ -90,7 +90,7 @@ class DeepQAgent(BaseAgent):
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
-        experience = self.memory.sample_batch(self.config.batch_size)
+        experience = self.memory.sample_batch()
         observations = experience.observations
         actions = experience.actions
         rewards = experience.rewards
@@ -147,7 +147,7 @@ class DoubleQAgent(BaseAgent):
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
-        experience = self.memory.sample_batch(self.config.batch_size)
+        experience = self.memory.sample_batch()
         observations = experience.observations
         actions = experience.actions
         rewards = experience.rewards
@@ -197,9 +197,6 @@ class DuelingQAgent(BaseAgent):
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
 
-        # Initialize Update Counter:
-        self.num_updates = 0
-
     def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
         """ Predict the state-action-values using the target network given one or several observation(s) """
         observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
@@ -207,7 +204,7 @@ class DuelingQAgent(BaseAgent):
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
-        experience = self.memory.sample_batch(self.config.batch_size)
+        experience = self.memory.sample_batch()
         observations = experience.observations
         actions = experience.actions
         rewards = experience.rewards
@@ -257,9 +254,6 @@ class DDQAgent(BaseAgent):
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
 
-        # Initialize Update Counter:
-        self.num_updates = 0
-
     def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
         """ Predict the state-action-values using the target network given one or several observation(s) """
         observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
@@ -267,7 +261,7 @@ class DDQAgent(BaseAgent):
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
-        experience = self.memory.sample_batch(self.config.batch_size)
+        experience = self.memory.sample_batch()
         observations = experience.observations
         actions = experience.actions
         rewards = experience.rewards

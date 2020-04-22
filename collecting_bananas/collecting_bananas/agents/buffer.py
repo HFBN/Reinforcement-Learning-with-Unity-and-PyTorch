@@ -19,6 +19,9 @@ class BufferConfig(BaseModel):
     observation_dim: int
     buffer_size: int
     min_buffer_size: int
+    batch_size: int
+    alpha: float
+    beta: float
 
 
 class ReplayBuffer:
@@ -46,7 +49,32 @@ class ReplayBuffer:
         """Returns whether enough (observation, action, reward, next_observation, done) tuples have been stored"""
         return self.size > self.config.min_buffer_size
 
-    def sample_batch(self, batch_size: int) -> Batch:
-        idxs = np.random.randint(0, self.size, size=batch_size)
+    def sample_batch(self) -> Batch:
+        idxs = np.random.randint(0, self.size, size=self.config.batch_size)
+        return Batch(self.observations[:, idxs].T, self.actions[idxs], self.rewards[idxs],
+                     self.next_observations[:, idxs].T, self.dones[idxs])
+
+
+class PrioritisedReplayBuffer(ReplayBuffer):
+    """A class enhancing the ReplayBuffer by Prioritised Experience Replay Sampling"""
+    def __init__(self, config: BufferConfig):
+        super().__init__(config)
+        self.last_idxs = np.zeros(config.batch_size, dtype=np.int32)
+        self.deltas = np.zeros(config.buffer_size, dtype=np.float32)
+        self.probabilities = np.zeros(config.buffer_size, dtype=np.float)
+
+    def update_deltas(self, deltas: np.ndarray):
+        self.deltas[self.last_idxs] = deltas
+
+    def _update_probabilities(self):
+        self.deltas[:self.size] += 0.01
+        powered_deltas = np.power(np.abs(self.deltas), self.config.alpha)
+        self.probabilities = powered_deltas / np.sum(powered_deltas)
+
+    def sample_batch(self) -> Batch:
+        self._update_probabilities()
+        idxs = np.random.choice(np.arange(self.size), size=self.config.batch_size,
+                                replace=False, p=self.probabilities)
+        self.last_idxs = idxs
         return Batch(self.observations[:, idxs].T, self.actions[idxs], self.rewards[idxs],
                      self.next_observations[:, idxs].T, self.dones[idxs])
