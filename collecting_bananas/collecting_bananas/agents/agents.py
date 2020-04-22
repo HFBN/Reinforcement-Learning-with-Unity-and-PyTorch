@@ -33,6 +33,7 @@ class BaseAgent:
         # Initialize the parts:
         self.memory = ReplayBuffer(config.buffer_config)
         self.main_network = None
+        self.target_network = None
 
         # Initialize starting epsilon:
         self.epsilon = config.epsilon
@@ -62,15 +63,26 @@ class BaseAgent:
         # Casting necessary for environment
         return np.argmax(estimates[0]).astype(np.int32)
 
+    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
+        """ Predict the state-action-values using the target network given one or several observation(s) """
+        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
+        return self.target_network.forward(observations).detach().numpy()
+
+    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
+        """Soft update model parameters"""
+        for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
+            target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
+
     def save(self, path: str):
         torch.save(self.main_network, path)
 
     def load(self, path: str):
         self.main_network = torch.load(path)
+        self.target_network = torch.load(path)
 
 
 class DeepQAgent(BaseAgent):
-    """A class representing an agent using Double-Q-Learning"""
+    """A class representing an agent using Deep-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
         """ Initialize the components Estimator and Target Network as well as some further attributes"""
@@ -82,11 +94,6 @@ class DeepQAgent(BaseAgent):
 
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
-
-    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
-        """ Predict the state-action-values using the target network given one or several observation(s) """
-        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
-        return self.target_network.forward(observations).detach().numpy()
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
@@ -116,17 +123,8 @@ class DeepQAgent(BaseAgent):
         # Increment number of updates done so far and update target network if necessary
         self._soft_update(self.main_network, self.target_network, self.config.tau)
 
-    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
-        """Soft update model parameters"""
-        for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
-            target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
 
-    def load(self, path: str):
-        self.main_network = torch.load(path)
-        self.target_network = torch.load(path)
-
-
-class DoubleQAgent(BaseAgent):
+class DoubleQAgent(DeepQAgent):
     """A class representing an agent using Deep-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
@@ -139,11 +137,6 @@ class DoubleQAgent(BaseAgent):
 
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
-
-    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
-        """ Predict the state-action-values using the target network given one or several observation(s) """
-        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
-        return self.target_network.forward(observations).detach().numpy()
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
@@ -172,15 +165,6 @@ class DoubleQAgent(BaseAgent):
 
         # Increment number of updates done so far and update target network if necessary
         self._soft_update(self.main_network, self.target_network, self.config.tau)
-
-    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
-        """Soft update model parameters"""
-        for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
-            target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
-
-    def load(self, path: str):
-        self.main_network = torch.load(path)
-        self.target_network = torch.load(path)
 
 
 class DuelingQAgent(BaseAgent):
@@ -197,11 +181,6 @@ class DuelingQAgent(BaseAgent):
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
 
-    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
-        """ Predict the state-action-values using the target network given one or several observation(s) """
-        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
-        return self.target_network.forward(observations).detach().numpy()
-
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
         experience = self.memory.sample_batch()
@@ -230,17 +209,8 @@ class DuelingQAgent(BaseAgent):
         # Increment number of updates done so far and update target network if necessary
         self._soft_update(self.main_network, self.target_network, self.config.tau)
 
-    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
-        """Soft update model parameters"""
-        for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
-            target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
 
-    def load(self, path: str):
-        self.main_network = torch.load(path)
-        self.target_network = torch.load(path)
-
-
-class DDQAgent(BaseAgent):
+class DuellingDoubleQAgent(BaseAgent):
     """A class representing an agent using Deep-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
@@ -253,11 +223,6 @@ class DDQAgent(BaseAgent):
 
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
-
-    def _predict_targets(self, observations: np.ndarray) -> np.ndarray:
-        """ Predict the state-action-values using the target network given one or several observation(s) """
-        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
-        return self.target_network.forward(observations).detach().numpy()
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
@@ -286,12 +251,3 @@ class DDQAgent(BaseAgent):
 
         # Increment number of updates done so far and update target network if necessary
         self._soft_update(self.main_network, self.target_network, self.config.tau)
-
-    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
-        """Soft update model parameters"""
-        for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
-            target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
-
-    def load(self, path: str):
-        self.main_network = torch.load(path)
-        self.target_network = torch.load(path)
