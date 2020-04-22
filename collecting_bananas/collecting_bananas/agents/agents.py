@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from pydantic import BaseModel
-from .buffer import BufferConfig, ReplayBuffer
+from .buffer import BufferConfig, ReplayBuffer, PrioritisingReplayBuffer
 from .networks import NetworkConfig, DQN, DuelingQNetwork
 import torch
 import torch.nn.functional as F
@@ -12,7 +12,6 @@ class AgentConfig(BaseModel):
     """A class used to configure an Agent"""
     observation_dim: int
     action_dim: int
-    batch_size: int
     epsilon: float
     epsilon_decay_period: int
     min_epsilon: float
@@ -125,18 +124,9 @@ class DeepQAgent(BaseAgent):
 
 
 class DoubleQAgent(DeepQAgent):
-    """A class representing an agent using Deep-Q-Learning"""
+    """A class representing an agent using Double-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
-        """ Initialize the components Estimator and Target Network as well as some further attributes"""
-
-        # Initialize the additional parts:
-        self.main_network = DQN(config.network_config)
-        # Copy the main network as the target network:
-        self.target_network = copy.copy(self.main_network)
-
-        # Initialize optimizer:
-        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
@@ -167,8 +157,8 @@ class DoubleQAgent(DeepQAgent):
         self._soft_update(self.main_network, self.target_network, self.config.tau)
 
 
-class DuelingQAgent(BaseAgent):
-    """A class representing an agent using Deep-Q-Learning"""
+class DuelingQAgent(DeepQAgent):
+    """A class representing an agent using Dueling-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
         """ Initialize the components Estimator and Target Network as well as some further attributes"""
@@ -180,6 +170,28 @@ class DuelingQAgent(BaseAgent):
 
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+
+
+class DuelingDoubleQAgent(DoubleQAgent):
+    """A class representing an agent using Dueling-Double-Q-Learning"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        """ Initialize the components Estimator and Target Network as well as some further attributes"""
+
+        # Initialize the additional parts:
+        self.main_network = DuelingQNetwork(config.network_config)
+        # Copy the main network as the target network:
+        self.target_network = copy.copy(self.main_network)
+
+        # Initialize optimizer:
+        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+
+
+class PrioritisingDeepQAgent(DeepQAgent):
+    """A class representing an agent using Deep-Q-Learning with Prioritised Experience Replay"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        self.memory = PrioritisingReplayBuffer(config.buffer_config)
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
@@ -206,23 +218,19 @@ class DuelingQAgent(BaseAgent):
         loss.backward()
         self.optimizer.step()
 
+        # Compute TD-targets and store them in the buffer
+        deltas = (targets - predictions).detach().numpy()
+        self.memory.update_deltas(deltas)
+
         # Increment number of updates done so far and update target network if necessary
         self._soft_update(self.main_network, self.target_network, self.config.tau)
 
 
-class DuellingDoubleQAgent(BaseAgent):
-    """A class representing an agent using Deep-Q-Learning"""
+class PrioritisingDoubleQAgent(DoubleQAgent):
+    """A class representing an agent using Double-Q-Learning with Prioritised Experience Replay"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
-        """ Initialize the components Estimator and Target Network as well as some further attributes"""
-
-        # Initialize the additional parts:
-        self.main_network = DuelingQNetwork(config.network_config)
-        # Copy the main network as the target network:
-        self.target_network = copy.copy(self.main_network)
-
-        # Initialize optimizer:
-        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+        self.memory = PrioritisingReplayBuffer(config.buffer_config)
 
     def learn(self):
         """Perform a one step gradient update with a batch samples from experience"""
@@ -249,5 +257,39 @@ class DuellingDoubleQAgent(BaseAgent):
         loss.backward()
         self.optimizer.step()
 
+        # Compute TD-targets and store them in the buffer
+        deltas = (targets - predictions).detach().numpy()
+        self.memory.update_deltas(deltas)
+
         # Increment number of updates done so far and update target network if necessary
         self._soft_update(self.main_network, self.target_network, self.config.tau)
+
+
+class PrioritisingDuelingQAgent(PrioritisingDeepQAgent):
+    """A class representing an agent using Dueling-Q-Learning with Prioritised Experience Replay"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        """ Initialize the components Estimator and Target Network as well as some further attributes"""
+
+        # Initialize the additional parts:
+        self.main_network = DuelingQNetwork(config.network_config)
+        # Copy the main network as the target network:
+        self.target_network = copy.copy(self.main_network)
+
+        # Initialize optimizer:
+        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+
+
+class PrioritisingDuelingDoubleQAgent(PrioritisingDoubleQAgent):
+    """A class representing an agent using Dueling-Double-Q-Learning with Prioritised Experience Replay"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        """ Initialize the components Estimator and Target Network as well as some further attributes"""
+
+        # Initialize the additional parts:
+        self.main_network = DuelingQNetwork(config.network_config)
+        # Copy the main network as the target network:
+        self.target_network = copy.copy(self.main_network)
+
+        # Initialize optimizer:
+        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
