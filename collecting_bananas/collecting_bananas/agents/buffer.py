@@ -60,7 +60,6 @@ class PrioritisingReplayBuffer(ReplayBuffer):
         super().__init__(config)
         self.last_idxs = np.zeros(config.batch_size, dtype=np.int32)
         self.deltas = np.zeros(config.buffer_size, dtype=np.float32)
-        print(self.deltas)
         self.probabilities = np.zeros(config.buffer_size, dtype=np.float32)
 
     def update_deltas(self, deltas: np.ndarray):
@@ -75,10 +74,9 @@ class PrioritisingReplayBuffer(ReplayBuffer):
         powered_deltas = np.power(np.absolute(self.deltas - np.max(self.deltas)), self.config.alpha)
         # Set unexplored deltas to the max, such that they are picked with highest probability possible
         indicator = [powered_deltas == 0]
-        indicator[self.size:] = False
-        len(powered_deltas)
-        powered_deltas[indicator] = np.max(powered_deltas)
-        len(powered_deltas)
+        powered_deltas[tuple(indicator)] = np.max(powered_deltas)
+        # Correct for unfilled buffer storage
+        powered_deltas[self.size:] = 0
         # Normalize to one and store
         self.probabilities = powered_deltas / np.sum(powered_deltas)
 

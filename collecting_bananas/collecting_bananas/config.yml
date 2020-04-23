@@ -17,6 +17,7 @@ network_config:
   layers:
     fc1: 32
     fc2: 32
+  std: 0.5
 
 # Agent Config
 agent_config:
