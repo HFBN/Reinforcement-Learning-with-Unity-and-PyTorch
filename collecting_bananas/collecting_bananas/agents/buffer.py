@@ -4,13 +4,19 @@ from pydantic import BaseModel
 
 class Batch:
     """A class that represents a batch used in training"""
-    def __init__(self, observations: np.ndarray, actions: np.ndarray, rewards: np.float,
-                 next_observations: np.ndarray, dones: bool):
+    def __init__(self, observations: np.ndarray, actions: np.ndarray, rewards: np.ndarray,
+                 next_observations: np.ndarray, dones: np.ndarray, importance=None):
         self.observations = observations
         self.actions = actions
         self.rewards = rewards
         self.next_observations = next_observations
         self.dones = dones
+        # For prioritized experience replay, we also need the importances to weight the loss
+        if importance is not None:
+            self.importance = importance
+        else:
+            # If no importance is given, all samples are weighted equally
+            self.importance = np.ones(len(rewards))
 
 
 class BufferConfig(BaseModel):
@@ -21,6 +27,7 @@ class BufferConfig(BaseModel):
     batch_size: int
     alpha: float
     beta: float
+    beta_growth_period: int
 
 
 class ReplayBuffer:
@@ -61,6 +68,9 @@ class PrioritisingReplayBuffer(ReplayBuffer):
         self.last_idxs = np.zeros(config.batch_size, dtype=np.int32)
         self.deltas = np.zeros(config.buffer_size, dtype=np.float32)
         self.probabilities = np.zeros(config.buffer_size, dtype=np.float32)
+        self.importance = np.zeros(config.buffer_size, dtype=np.float32)
+        self.beta = config.beta
+        self.delta_beta = (1.0 - config.beta) / config.beta_growth_period
 
     def update_deltas(self, deltas: np.ndarray):
         np.put(self.deltas, self.last_idxs, deltas)
@@ -71,7 +81,7 @@ class PrioritisingReplayBuffer(ReplayBuffer):
         to be sampled.
         """
         # Robust computation of power
-        powered_deltas = np.power(np.absolute(self.deltas - np.max(self.deltas)), self.config.alpha)
+        powered_deltas = np.power(np.absolute(self.deltas - np.max(self.deltas) + 1e-5), self.config.alpha)
         # Set unexplored deltas to the max, such that they are picked with highest probability possible
         indicator = [powered_deltas == 0]
         powered_deltas[tuple(indicator)] = np.max(powered_deltas)
@@ -80,15 +90,15 @@ class PrioritisingReplayBuffer(ReplayBuffer):
         # Normalize to one and store
         self.probabilities = powered_deltas / np.sum(powered_deltas)
 
+    def _update_importance(self):
+        self.importance[:self.size] = ((1 / self.probabilities[:self.size]) * (1 / self.size)) ** self.beta
+        self.beta = np.minimum(self.beta + self.delta_beta, 1.0)
+
     def sample_batch(self) -> Batch:
-        # Robustness check:
-        if np.sum(np.absolute(self.deltas)) > 0:
-            self._update_probabilities()
-            idxs = np.random.choice(np.arange(self.config.buffer_size), size=self.config.batch_size,
-                                    replace=False, p=self.probabilities)
-        else:
-            idxs = np.random.choice(np.arange(self.config.buffer_size), size=self.config.batch_size,
-                                    replace=False)
+        self._update_probabilities()
+        self._update_importance()
+        idxs = np.random.choice(np.arange(self.config.buffer_size), size=self.config.batch_size,
+                                replace=False, p=self.probabilities)
         self.last_idxs = idxs
         return Batch(self.observations[:, idxs].T, self.actions[idxs], self.rewards[idxs],
-                     self.next_observations[:, idxs].T, self.dones[idxs])
+                     self.next_observations[:, idxs].T, self.dones[idxs], self.importance[idxs])

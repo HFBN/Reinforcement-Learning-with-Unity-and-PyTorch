@@ -98,7 +98,7 @@ class NoisyLinear(nn.Module):
         self.weight_epsilon.copy_(epsilon_out.ger(epsilon_in))
         self.bias_epsilon.copy_(epsilon_out)
 
-    def forward(self, observation: torch.tensor, train_mode):
+    def forward(self, observation: torch.tensor, train_mode=False):
         if train_mode:
             return F.linear(observation,
                             self.weight_mu + self.weight_sigma * self.weight_epsilon,

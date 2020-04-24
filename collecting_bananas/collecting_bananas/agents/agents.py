@@ -20,6 +20,7 @@ class AgentConfig(BaseModel):
     tau: float
     buffer_config: BufferConfig
     network_config: NetworkConfig
+    prioritising: bool
 
 
 class BaseAgent:
@@ -30,7 +31,10 @@ class BaseAgent:
         self.config = config
 
         # Initialize the parts:
-        self.memory = ReplayBuffer(config.buffer_config)
+        if not config.prioritising:
+            self.memory = ReplayBuffer(config.buffer_config)
+        else:
+            self.memory = PrioritisingReplayBuffer(config.buffer_config)
         self.main_network = None
         self.target_network = None
 
@@ -103,6 +107,7 @@ class DeepQAgent(BaseAgent):
         next_observations = experience.next_observations
         # We are going to use the dones to adjust target values once a terminal observation is reached.
         dones = experience.dones
+        importance = experience.importance
 
         # Calculate update targets:
         next_Qs = self._predict_targets(next_observations)
@@ -113,18 +118,26 @@ class DeepQAgent(BaseAgent):
         observations = torch.from_numpy(observations).float()
         actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
         targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
+        importance = torch.from_numpy(importance.reshape(len(importance), 1)).float()
         predictions = self.main_network.forward(observations).gather(dim=1, index=actions)
-        loss = F.mse_loss(predictions, targets)
+        # For a non-prioritizing replay buffer, importance has only entries equal to one and this is equal to MSE
+        loss = torch.sum(importance * (targets - predictions) ** 2)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        # Update Prioritising Replay Buffer (if applicable)
+        if self.config.prioritising:
+            # Compute TD-targets and store them in the buffer
+            deltas = (targets - predictions).detach().numpy()
+            self.memory.update_deltas(deltas)
 
         # Increment number of updates done so far and update target network if necessary
         self._soft_update(self.main_network, self.target_network, self.config.tau)
 
 
-class DoubleQAgent(DeepQAgent):
-    """A class representing an agent using Double-Q-Learning"""
+class DoubleDeepQAgent(DeepQAgent):
+    """A class representing an agent using Double-Deep-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
 
@@ -137,6 +150,7 @@ class DoubleQAgent(DeepQAgent):
         next_observations = experience.next_observations
         # We are going to use the dones to adjust target values once a terminal observation is reached.
         dones = experience.dones
+        importance = experience.importance
 
         # Calculate update targets:
         next_actions = np.argmax(self._predict(next_observations), axis=1).reshape(-1)
@@ -147,18 +161,26 @@ class DoubleQAgent(DeepQAgent):
         observations = torch.from_numpy(observations).float()
         actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
         targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
+        importance = torch.from_numpy(importance.reshape(len(targets), 1)).float()
         predictions = self.main_network.forward(observations).gather(dim=1, index=actions)
-        loss = F.mse_loss(predictions, targets)
+        # For a non-prioritizing replay buffer, importance has only entries equal to one and this is equal to MSE
+        loss = torch.sum(importance * (targets - predictions) ** 2)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        # Update Prioritising Replay Buffer (if applicable)
+        if self.config.prioritising:
+            # Compute TD-targets and store them in the buffer
+            deltas = (targets - predictions).detach().numpy()
+            self.memory.update_deltas(deltas)
 
         # Increment number of updates done so far and update target network if necessary
         self._soft_update(self.main_network, self.target_network, self.config.tau)
 
 
-class DuelingQAgent(DeepQAgent):
-    """A class representing an agent using Dueling-Q-Learning"""
+class DuelingDeepQAgent(DeepQAgent):
+    """A class representing an agent using Dueling-Deep-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
         """ Initialize the components Estimator and Target Network as well as some further attributes"""
@@ -172,116 +194,8 @@ class DuelingQAgent(DeepQAgent):
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
 
 
-class DuelingDoubleQAgent(DoubleQAgent):
-    """A class representing an agent using Dueling-Double-Q-Learning"""
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
-        """ Initialize the components Estimator and Target Network as well as some further attributes"""
-
-        # Initialize the additional parts:
-        self.main_network = DuelingQNetwork(config.network_config)
-        # Copy the main network as the target network:
-        self.target_network = copy.copy(self.main_network)
-
-        # Initialize optimizer:
-        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
-
-
-class PrioritisingDeepQAgent(DeepQAgent):
-    """A class representing an agent using Deep-Q-Learning with Prioritised Experience Replay"""
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
-        self.memory = PrioritisingReplayBuffer(config.buffer_config)
-
-    def learn(self):
-        """Perform a one step gradient update with a batch samples from experience"""
-        experience = self.memory.sample_batch()
-        observations = experience.observations
-        actions = experience.actions
-        rewards = experience.rewards
-        next_observations = experience.next_observations
-        # We are going to use the dones to adjust target values once a terminal observation is reached.
-        dones = experience.dones
-
-        # Calculate update targets:
-        next_Qs = self._predict_targets(next_observations)
-        targets = rewards.reshape(-1) + self.config.gamma * (1-dones.reshape(-1)) * \
-            np.amax(next_Qs, axis=1).reshape(-1)
-
-        # Calculate loss
-        observations = torch.from_numpy(observations).float()
-        actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
-        targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
-        predictions = self.main_network.forward(observations).gather(dim=1, index=actions)
-        loss = F.mse_loss(predictions, targets)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        # Compute TD-targets and store them in the buffer
-        deltas = (targets - predictions).detach().numpy()
-        self.memory.update_deltas(deltas)
-
-        # Increment number of updates done so far and update target network if necessary
-        self._soft_update(self.main_network, self.target_network, self.config.tau)
-
-
-class PrioritisingDoubleQAgent(DoubleQAgent):
-    """A class representing an agent using Double-Q-Learning with Prioritised Experience Replay"""
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
-        self.memory = PrioritisingReplayBuffer(config.buffer_config)
-
-    def learn(self):
-        """Perform a one step gradient update with a batch samples from experience"""
-        experience = self.memory.sample_batch()
-        observations = experience.observations
-        actions = experience.actions
-        rewards = experience.rewards
-        next_observations = experience.next_observations
-        # We are going to use the dones to adjust target values once a terminal observation is reached.
-        dones = experience.dones
-
-        # Calculate update targets:
-        next_actions = np.argmax(self._predict(next_observations), axis=1).reshape(-1)
-        next_Qs = self._predict_targets(next_observations)[np.arange(len(next_actions)), next_actions].reshape(-1)
-        targets = rewards.reshape(-1) + self.config.gamma * (1-dones.reshape(-1)) * next_Qs
-
-        # Calculate loss
-        observations = torch.from_numpy(observations).float()
-        actions = torch.from_numpy(actions.reshape(len(actions), 1)).long()
-        targets = torch.from_numpy(targets.reshape(len(targets), 1)).float()
-        predictions = self.main_network.forward(observations).gather(dim=1, index=actions)
-        loss = F.mse_loss(predictions, targets)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        # Compute TD-targets and store them in the buffer
-        deltas = (targets - predictions).detach().numpy()
-        self.memory.update_deltas(deltas)
-
-        # Increment number of updates done so far and update target network if necessary
-        self._soft_update(self.main_network, self.target_network, self.config.tau)
-
-
-class PrioritisingDuelingQAgent(PrioritisingDeepQAgent):
-    """A class representing an agent using Dueling-Q-Learning with Prioritised Experience Replay"""
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
-        """ Initialize the components Estimator and Target Network as well as some further attributes"""
-
-        # Initialize the additional parts:
-        self.main_network = DuelingQNetwork(config.network_config)
-        # Copy the main network as the target network:
-        self.target_network = copy.copy(self.main_network)
-
-        # Initialize optimizer:
-        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
-
-
-class PrioritisingDuelingDoubleQAgent(PrioritisingDoubleQAgent):
-    """A class representing an agent using Dueling-Double-Q-Learning with Prioritised Experience Replay"""
+class DuelingDoubleDeepQAgent(DoubleDeepQAgent):
+    """A class representing an agent using Dueling-Double-Deep-Q-Learning"""
     def __init__(self, config: AgentConfig):
         super().__init__(config)
         """ Initialize the components Estimator and Target Network as well as some further attributes"""

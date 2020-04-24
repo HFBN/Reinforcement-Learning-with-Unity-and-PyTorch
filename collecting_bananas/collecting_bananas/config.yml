@@ -10,7 +10,8 @@ buffer_config:
   min_buffer_size: 50000
   batch_size: 64
   alpha: 0.5
-  beta: 0.5
+  beta: 0.0
+  beta_growth_period: 500000
 
 # Network Config
 network_config:
@@ -27,3 +28,4 @@ agent_config:
   gamma: 0.99
   learning_rate: 10e-5
   tau: 2e-3
+  prioritising: True
