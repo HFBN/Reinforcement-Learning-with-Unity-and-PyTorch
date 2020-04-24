@@ -2,9 +2,8 @@ import numpy as np
 import copy
 from pydantic import BaseModel
 from .buffer import BufferConfig, ReplayBuffer, PrioritisingReplayBuffer
-from .networks import NetworkConfig, DQN, DuelingQNetwork
+from .networks import NetworkConfig, DeepQNetwork, DuelingQNetwork, NoisyDeepQNetwork, NoisyDuelingQNetwork
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 
 
@@ -57,7 +56,7 @@ class BaseAgent:
         # Decrease exploration
         self.epsilon = np.max([self.config.min_epsilon, self.epsilon - self.epsilon_decay_rate])
 
-        if np.random.rand() < self.epsilon:
+        if np.random.rand() < self.epsilon and self.train_mode:
             # Explore
             return np.int32(np.random.choice(self.config.action_dim))
 
@@ -71,7 +70,7 @@ class BaseAgent:
         observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
         return self.target_network.forward(observations).detach().numpy()
 
-    def _soft_update(self, main_network: DQN, target_network: DQN, tau: float):
+    def _soft_update(self, main_network: DeepQNetwork, target_network: DeepQNetwork, tau: float):
         """Soft update model parameters"""
         for target_param, main_param in zip(target_network.parameters(), main_network.parameters()):
             target_param.data.copy_(tau * main_param.data + (1.0 - tau) * target_param.data)
@@ -91,7 +90,7 @@ class DeepQAgent(BaseAgent):
         """ Initialize the components Estimator and Target Network as well as some further attributes"""
 
         # Initialize the additional parts:
-        self.main_network = DQN(config.network_config)
+        self.main_network = DeepQNetwork(config.network_config)
         # Copy the main network as the target network:
         self.target_network = copy.copy(self.main_network)
 
@@ -207,3 +206,29 @@ class DuelingDoubleDeepQAgent(DoubleDeepQAgent):
 
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+
+
+class NoisyDeepQAgent(DeepQAgent):
+    """A class representing an agent using Deep-Q-Learning with Noisy Exploration"""
+    def __init__(self, config: AgentConfig):
+        super().__init__(config)
+        """ Initialize the Noisy Estimator and Target Network as well as the optimizer"""
+
+        # Initialize the additional parts:
+        self.main_network = NoisyDeepQNetwork(config.network_config)
+        # Copy the main network as the target network:
+        self.target_network = copy.copy(self.main_network)
+
+        # Initialize optimizer:
+        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
+
+    def _predict(self, observations: np.ndarray) -> np.ndarray:
+        """ Predict the state-action-values using the main network given one or several observation(s) """
+        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
+        return self.main_network.forward(observations, True).detach().numpy()
+
+    def act(self, observation: np.ndarray) -> np.int32:
+        """ Makes the Agent choose an action based on the observation and its current estimator"""
+        estimates = self._predict(observation)
+        # Casting necessary for environment
+        return np.argmax(estimates[0]).astype(np.int32)

@@ -18,7 +18,8 @@ network_config:
   layers:
     fc1: 32
     fc2: 32
-  std: 0.5
+  epsilon: 0.05
+  alpha: 0.999
 
 # Agent Config
 agent_config:
@@ -28,4 +29,4 @@ agent_config:
   gamma: 0.99
   learning_rate: 10e-5
   tau: 2e-3
-  prioritising: True
+  prioritising: False

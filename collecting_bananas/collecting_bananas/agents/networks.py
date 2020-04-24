@@ -11,14 +11,15 @@ class NetworkConfig(BaseModel):
     observation_dim: int
     action_dim: int
     layers: Dict[str, int]
-    std: float
+    epsilon: float
+    alpha: float
 
 
-class DQN(nn.Module):
+class DeepQNetwork(nn.Module):
     """A class representing a Deep Q-Network"""
     def __init__(self, config: NetworkConfig):
         """Initialize parameters and build model."""
-        super(DQN, self).__init__()
+        super(DeepQNetwork, self).__init__()
         self.fc1 = nn.Linear(config.observation_dim, config.layers['fc1'])
         self.fc2 = nn.Linear(config.layers['fc1'], config.layers['fc2'])
         self.fc3 = nn.Linear(config.layers['fc2'], config.action_dim)
@@ -62,59 +63,50 @@ class DuelingQNetwork(nn.Module):
 
 class NoisyLinear(nn.Module):
     """A class used to represent a Noisy Linear Layer inside the Noisy Networks"""
-    def __init__(self, input_dim: int, output_dim: int, std: float):
+    def __init__(self, input_dim: int, output_dim: int, epsilon: float, alpha: float):
         super(NoisyLinear, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.std = std
+        self.epsilon = epsilon
+        self.alpha = alpha
 
         # Build the weights
-        self.weight_mu = nn.Parameter(torch.empty(output_dim, input_dim))
-        self.weight_sigma = nn.Parameter(torch.empty(output_dim, input_dim))
-        self.register_buffer('weight_epsilon', torch.empty(output_dim, input_dim))
+        self.weights = nn.Parameter(torch.randn(output_dim, input_dim) / self.input_dim)
+        self.register_buffer('weight_noise', torch.empty(output_dim, input_dim))
         # Build the biases
-        self.bias_mu = nn.Parameter(torch.empty(output_dim))
-        self.bias_sigma = nn.Parameter(torch.empty(output_dim))
-        self.register_buffer('bias_epsilon', torch.empty(output_dim))
-        # Initialize
-        self.reset_parameters()
-        self.reset_noise()
+        self.bias = nn.Parameter(torch.randn(output_dim) / self.input_dim)
+        self.register_buffer('bias_noise', torch.empty(output_dim))
 
-    def reset_parameters(self):
-        mu_range = 1 / math.sqrt(self.input_dim)
-        # Initialize parameters
-        self.weight_mu.data.uniform_(-mu_range, mu_range)
-        self.weight_sigma.data.fill_(self.std / math.sqrt(self.in_features))
-        self.bias_mu.data.uniform_(-mu_range, mu_range)
-        self.bias_sigma.data.fill_(self.std / math.sqrt(self.out_features))
+    def _create_noise(self):
+        weight_noise = torch.randn(self.output_dim, self.input_dim) * self.epsilon
+        bias_noise = torch.randn(self.output_dim) * self.epsilon
+        self.weight_noise.copy_(weight_noise)
+        self.bias_noise.copy_(bias_noise)
 
-    def _scale_noise(self, size: int):
-        cache = torch.randn(size)
-        return cache.sign().mul_(cache.abs().sqrt_())
-
-    def reset_noise(self):
-        epsilon_in = self._scale_noise(self.input_dim)
-        epsilon_out = self._scale_noise(self.output_dim)
-        self.weight_epsilon.copy_(epsilon_out.ger(epsilon_in))
-        self.bias_epsilon.copy_(epsilon_out)
-
-    def forward(self, observation: torch.tensor, train_mode=False):
-        if train_mode:
-            return F.linear(observation,
-                            self.weight_mu + self.weight_sigma * self.weight_epsilon,
-                            self.bias_mu + self.bias_sigma * self.bias_epsilon)
+    def forward(self, observation: torch.tensor, noise=False):
+        if noise:
+            self._create_noise()
+            # Decrease epsilon
+            self.epsilon = self.alpha * self.epsilon
+            return F.linear(observation, self.weights + self.weight_noise, self.bias + self.bias_noise)
         else:
-            return F.linear(observation, self.weight_mu, self.bias_mu)
+            return F.linear(observation, self.weights, self.bias)
 
 
-class NoisyDQN(DQN):
+class NoisyDeepQNetwork(DeepQNetwork):
     """A class representing a Noisy Deep Q-Network"""
     def __init__(self, config: NetworkConfig):
         """Initialize parameters and build model."""
         super().__init__(config)
-        self.fc1 = nn.NoisyLinear(config.observation_dim, config.layers['fc1'], config.std)
-        self.fc2 = nn.NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.std)
-        self.fc3 = nn.NoisyLinear(config.layers['fc2'], config.action_dim, config.std)
+        self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.epsilon, config.alpha)
+        self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon, config.alpha)
+        self.fc3 = NoisyLinear(config.layers['fc2'], config.action_dim, config.epsilon, config.alpha)
+
+    def forward(self, observation: torch.Tensor, noise=False) -> torch.Tensor:
+        """Build a network that maps state -> action values."""
+        cache_ = F.relu(self.fc1.forward(observation, noise))
+        cache_ = F.relu(self.fc2.forward(cache_, noise))
+        return self.fc3.forward(cache_, noise)
 
 
 class NoisyDuelingQNetwork(DuelingQNetwork):
@@ -123,12 +115,12 @@ class NoisyDuelingQNetwork(DuelingQNetwork):
         """Initialize parameters and build model."""
         # Feature Layer
         super().__init__(config)
-        self.fc1 = nn.NoisyLinear(config.observation_dim, config.layers['fc1'], config.std)
+        self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.epsilon)
 
         # Value Stream
-        self.fc2 = nn.NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.std)
-        self.fc3 = nn.NoisyLinear(config.layers['fc2'], 1, config.std)
+        self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon)
+        self.fc3 = NoisyLinear(config.layers['fc2'], 1, config.epsilon)
 
         # Advantage Stream
-        self.fc4 = nn.NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.std)
-        self.fc5 = nn.NoisyLinear(config.layers['fc2'], config.action_dim, config.std)
+        self.fc4 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon)
+        self.fc5 = NoisyLinear(config.layers['fc2'], config.action_dim, config.epsilon)
