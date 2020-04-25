@@ -1,4 +1,3 @@
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -93,11 +92,11 @@ class NoisyLinear(nn.Module):
             return F.linear(observation, self.weights, self.bias)
 
 
-class NoisyDeepQNetwork(DeepQNetwork):
+class NoisyDeepQNetwork(nn.Module):
     """A class representing a Noisy Deep Q-Network"""
     def __init__(self, config: NetworkConfig):
         """Initialize parameters and build model."""
-        super().__init__(config)
+        super(NoisyDeepQNetwork, self).__init__()
         self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.epsilon, config.alpha)
         self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon, config.alpha)
         self.fc3 = NoisyLinear(config.layers['fc2'], config.action_dim, config.epsilon, config.alpha)
@@ -109,18 +108,31 @@ class NoisyDeepQNetwork(DeepQNetwork):
         return self.fc3.forward(cache_, noise)
 
 
-class NoisyDuelingQNetwork(DuelingQNetwork):
+class NoisyDuelingQNetwork(nn.Module):
     """A class representing a Noisy Dueling Q-Network"""
     def __init__(self, config: NetworkConfig):
         """Initialize parameters and build model."""
         # Feature Layer
-        super().__init__(config)
-        self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.epsilon)
+        super(NoisyDuelingQNetwork, self).__init__()
+        self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.epsilon, config.alpha)
 
         # Value Stream
-        self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon)
-        self.fc3 = NoisyLinear(config.layers['fc2'], 1, config.epsilon)
+        self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon, config.alpha)
+        self.fc3 = NoisyLinear(config.layers['fc2'], 1, config.epsilon, config.alpha)
 
         # Advantage Stream
-        self.fc4 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon)
-        self.fc5 = NoisyLinear(config.layers['fc2'], config.action_dim, config.epsilon)
+        self.fc4 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon, config.alpha)
+        self.fc5 = NoisyLinear(config.layers['fc2'], config.action_dim, config.epsilon, config.alpha)
+
+    def forward(self, observation: torch.Tensor, noise=False) -> torch.Tensor:
+        """Build a network that maps state -> action values."""
+        feature_layer = F.relu(self.fc1.forward(observation, noise))
+
+        # Compute Value
+        value_cache_ = F.relu(self.fc2.forward(feature_layer, noise))
+        value = self.fc3.forward(value_cache_, noise)
+
+        # Compute Advantages
+        advantage_cache_ = F.relu(self.fc4.forward(feature_layer, noise))
+        advantages = self.fc5.forward(advantage_cache_, noise)
+        return value + (advantages - advantages.mean(dim=1, keepdim=True))

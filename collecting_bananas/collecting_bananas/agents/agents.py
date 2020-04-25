@@ -20,6 +20,7 @@ class AgentConfig(BaseModel):
     buffer_config: BufferConfig
     network_config: NetworkConfig
     prioritising: bool
+    noisy: bool
 
 
 class BaseAgent:
@@ -49,17 +50,19 @@ class BaseAgent:
     def _predict(self, observations: np.ndarray) -> np.ndarray:
         """ Predict the state-action-values using the main network given one or several observation(s) """
         observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
-        return self.main_network(observations).detach().numpy()
+        if self.config.noisy:
+            return self.main_network.forward(observations, True).detach().numpy()
+        else:
+            return self.main_network(observations).detach().numpy()
 
     def act(self, observation: np.ndarray) -> np.int32:
         """ Makes the Agent choose an action based on the observation and its current estimator"""
-        # Decrease exploration
-        self.epsilon = np.max([self.config.min_epsilon, self.epsilon - self.epsilon_decay_rate])
-
-        if np.random.rand() < self.epsilon and self.train_mode:
-            # Explore
-            return np.int32(np.random.choice(self.config.action_dim))
-
+        if not self.config.noisy:
+            # Decrease exploration
+            self.epsilon = np.max([self.config.min_epsilon, self.epsilon - self.epsilon_decay_rate])
+            if np.random.rand() < self.epsilon:
+                # Explore
+                return np.int32(np.random.choice(self.config.action_dim))
         # Exploit
         estimates = self._predict(observation)
         # Casting necessary for environment
@@ -90,7 +93,10 @@ class DeepQAgent(BaseAgent):
         """ Initialize the components Estimator and Target Network as well as some further attributes"""
 
         # Initialize the additional parts:
-        self.main_network = DeepQNetwork(config.network_config)
+        if not config.noisy:
+            self.main_network = DeepQNetwork(config.network_config)
+        else:
+            self.main_network = NoisyDeepQNetwork(config.network_config)
         # Copy the main network as the target network:
         self.target_network = copy.copy(self.main_network)
 
@@ -185,7 +191,10 @@ class DuelingDeepQAgent(DeepQAgent):
         """ Initialize the components Estimator and Target Network as well as some further attributes"""
 
         # Initialize the additional parts:
-        self.main_network = DuelingQNetwork(config.network_config)
+        if not config.noisy:
+            self.main_network = DuelingQNetwork(config.network_config)
+        else:
+            self.main_network = NoisyDuelingQNetwork(config.network_config)
         # Copy the main network as the target network:
         self.target_network = copy.copy(self.main_network)
 
@@ -200,35 +209,12 @@ class DuelingDoubleDeepQAgent(DoubleDeepQAgent):
         """ Initialize the components Estimator and Target Network as well as some further attributes"""
 
         # Initialize the additional parts:
-        self.main_network = DuelingQNetwork(config.network_config)
+        if not config.noisy:
+            self.main_network = DuelingQNetwork(config.network_config)
+        else:
+            self.main_network = NoisyDuelingQNetwork(config.network_config)
         # Copy the main network as the target network:
         self.target_network = copy.copy(self.main_network)
 
         # Initialize optimizer:
         self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
-
-
-class NoisyDeepQAgent(DeepQAgent):
-    """A class representing an agent using Deep-Q-Learning with Noisy Exploration"""
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
-        """ Initialize the Noisy Estimator and Target Network as well as the optimizer"""
-
-        # Initialize the additional parts:
-        self.main_network = NoisyDeepQNetwork(config.network_config)
-        # Copy the main network as the target network:
-        self.target_network = copy.copy(self.main_network)
-
-        # Initialize optimizer:
-        self.optimizer = optim.Adam(self.main_network.parameters(), lr=config.learning_rate)
-
-    def _predict(self, observations: np.ndarray) -> np.ndarray:
-        """ Predict the state-action-values using the main network given one or several observation(s) """
-        observations = torch.from_numpy(observations.reshape(-1, self.config.observation_dim)).float()
-        return self.main_network.forward(observations, True).detach().numpy()
-
-    def act(self, observation: np.ndarray) -> np.int32:
-        """ Makes the Agent choose an action based on the observation and its current estimator"""
-        estimates = self._predict(observation)
-        # Casting necessary for environment
-        return np.argmax(estimates[0]).astype(np.int32)

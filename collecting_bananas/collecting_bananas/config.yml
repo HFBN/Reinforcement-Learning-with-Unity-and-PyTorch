@@ -23,10 +23,11 @@ network_config:
 
 # Agent Config
 agent_config:
-  epsilon: 1
-  min_epsilon: 0.1
-  epsilon_decay_period: 50000
+  epsilon: 0.2
+  min_epsilon: 0.01
+  epsilon_decay_period: 10000
   gamma: 0.99
   learning_rate: 10e-5
   tau: 2e-3
-  prioritising: False
+  prioritising: True
+  noisy: True

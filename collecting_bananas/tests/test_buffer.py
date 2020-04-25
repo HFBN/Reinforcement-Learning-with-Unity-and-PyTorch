@@ -44,7 +44,7 @@ def test_sample_batch_shape(batch):
     buffer = ReplayBuffer(config.buffer_config)
     for i in range(np.shape(observations)[0]):
         buffer.store(observations[i, :], actions[i], rewards[i], next_observations[i], dones[i])
-    batch_sample = buffer.sample_batch(config.batch_size)
+    batch_sample = buffer.sample_batch()
 
     assert np.shape(batch_sample.observations) == (config.batch_size, config.observation_dim)
     assert np.shape(batch_sample.actions) == (config.batch_size,)
