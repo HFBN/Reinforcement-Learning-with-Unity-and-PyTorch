@@ -10,7 +10,7 @@ class NetworkConfig(BaseModel):
     observation_dim: int
     action_dim: int
     layers: Dict[str, int]
-    epsilon: float
+    sigma: float
     alpha: float
 
 
@@ -62,11 +62,11 @@ class DuelingQNetwork(nn.Module):
 
 class NoisyLinear(nn.Module):
     """A class used to represent a Noisy Linear Layer inside the Noisy Networks"""
-    def __init__(self, input_dim: int, output_dim: int, epsilon: float, alpha: float):
+    def __init__(self, input_dim: int, output_dim: int, sigma: float, alpha: float):
         super(NoisyLinear, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.epsilon = epsilon
+        self.sigma = sigma
         self.alpha = alpha
 
         # Build the weights
@@ -77,16 +77,16 @@ class NoisyLinear(nn.Module):
         self.register_buffer('bias_noise', torch.empty(output_dim))
 
     def _create_noise(self):
-        weight_noise = torch.randn(self.output_dim, self.input_dim) * self.epsilon
-        bias_noise = torch.randn(self.output_dim) * self.epsilon
+        weight_noise = torch.randn(self.output_dim, self.input_dim) * self.sigma
+        bias_noise = torch.randn(self.output_dim) * self.sigma
         self.weight_noise.copy_(weight_noise)
         self.bias_noise.copy_(bias_noise)
 
     def forward(self, observation: torch.tensor, noise=False):
         if noise:
             self._create_noise()
-            # Decrease epsilon
-            self.epsilon = self.alpha * self.epsilon
+            # Decrease sigma
+            self.sigma = self.alpha * self.sigma
             return F.linear(observation, self.weights + self.weight_noise, self.bias + self.bias_noise)
         else:
             return F.linear(observation, self.weights, self.bias)
@@ -97,9 +97,9 @@ class NoisyDeepQNetwork(nn.Module):
     def __init__(self, config: NetworkConfig):
         """Initialize parameters and build model."""
         super(NoisyDeepQNetwork, self).__init__()
-        self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.epsilon, config.alpha)
-        self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon, config.alpha)
-        self.fc3 = NoisyLinear(config.layers['fc2'], config.action_dim, config.epsilon, config.alpha)
+        self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.sigma, config.alpha)
+        self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.sigma, config.alpha)
+        self.fc3 = NoisyLinear(config.layers['fc2'], config.action_dim, config.sigma, config.alpha)
 
     def forward(self, observation: torch.Tensor, noise=False) -> torch.Tensor:
         """Build a network that maps state -> action values."""
@@ -114,15 +114,15 @@ class NoisyDuelingQNetwork(nn.Module):
         """Initialize parameters and build model."""
         # Feature Layer
         super(NoisyDuelingQNetwork, self).__init__()
-        self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.epsilon, config.alpha)
+        self.fc1 = NoisyLinear(config.observation_dim, config.layers['fc1'], config.sigma, config.alpha)
 
         # Value Stream
-        self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon, config.alpha)
-        self.fc3 = NoisyLinear(config.layers['fc2'], 1, config.epsilon, config.alpha)
+        self.fc2 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.sigma, config.alpha)
+        self.fc3 = NoisyLinear(config.layers['fc2'], 1, config.sigma, config.alpha)
 
         # Advantage Stream
-        self.fc4 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.epsilon, config.alpha)
-        self.fc5 = NoisyLinear(config.layers['fc2'], config.action_dim, config.epsilon, config.alpha)
+        self.fc4 = NoisyLinear(config.layers['fc1'], config.layers['fc2'], config.sigma, config.alpha)
+        self.fc5 = NoisyLinear(config.layers['fc2'], config.action_dim, config.sigma, config.alpha)
 
     def forward(self, observation: torch.Tensor, noise=False) -> torch.Tensor:
         """Build a network that maps state -> action values."""

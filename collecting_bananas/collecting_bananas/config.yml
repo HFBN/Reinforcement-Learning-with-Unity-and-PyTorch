@@ -18,7 +18,7 @@ network_config:
   layers:
     fc1: 32
     fc2: 32
-  epsilon: 0.05
+  sigma: 0.05
   alpha: 0.999
 
 # Agent Config
