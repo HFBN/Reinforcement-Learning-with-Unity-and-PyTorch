@@ -24,3 +24,9 @@ def batch():
     dones = np.random.choice(1, size=100).astype(bool).reshape(-1)
 
     return Batch(observations, actions, rewards, next_observations, dones)
+
+
+@pytest.fixture()
+def deltas():
+    # Creates a number of td-errors as basis for probability calculation inside an prioritising replay buffer
+    return np.random.randn(config.buffer_config.batch_size)

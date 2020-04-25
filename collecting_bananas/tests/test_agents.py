@@ -7,6 +7,7 @@ config = get_config()
 
 
 def test_act(observation):
+    config.noisy = False
     agent = DeepQAgent(config)
 
     # Exploration
@@ -16,7 +17,22 @@ def test_act(observation):
     agent.epsilon = 0
     chosen_action = agent.act(observation)
 
+    assert np.shape(random_action) == ()
+    assert np.shape(chosen_action) == ()
     assert random_action < config.action_dim
     assert chosen_action < config.action_dim
     assert type(random_action) == np.int32
+    assert type(chosen_action) == np.int32
+
+
+def test_noisy_act(observation):
+    config.noisy = True
+    agent = DeepQAgent(config)
+
+    # Exploitation
+    agent.epsilon = 0
+    chosen_action = agent.act(observation)
+
+    assert np.shape(chosen_action) == ()
+    assert chosen_action < config.action_dim
     assert type(chosen_action) == np.int32

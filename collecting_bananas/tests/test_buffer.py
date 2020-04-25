@@ -1,5 +1,5 @@
 import numpy as np
-from collecting_bananas.agents.buffer import ReplayBuffer
+from collecting_bananas.agents.buffer import ReplayBuffer, PrioritisingReplayBuffer
 from collecting_bananas.agents.utils import get_config
 
 
