@@ -1,6 +1,6 @@
 # Collecting Bananas
 
-In this subproject, an agent is trained collect bananas in a large, square world by using 
+In this subproject, an agent is trained to collect bananas in a large, square world by using 
 __Deep-Q-Learning__.  
 <br>
 ![Trained Agent](images/collecting_bananas.gif)
